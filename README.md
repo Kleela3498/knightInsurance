@@ -1,5 +1,11 @@
 # Knight Insurance: AI Solutions Developer Exercise
 
+**Demo video:** https://drive.google.com/file/d/1YLUdvk4J4S2M02FZIKWEz1uuGa77Nx4b/view?usp=sharing
+
+**At a glance:** Python / Flask app, local LLM through Ollama (`llama3.2`, 3B), about 4 hours of work.
+Setup for [Windows](#windows) and [macOS](#macos) is in "Run it" below; architecture is under "How it is built";
+limitations and unfinished items are at the end.
+
 A small local web app for reviewing a commercial-auto submission packet. The screen starts
 blank: the underwriter uploads a packet (application PDF, broker email, vehicle CSV, loss
 runs) and sees:
@@ -44,28 +50,66 @@ A fix re-applies the rules to the corrected value; it does not re-run model extr
 
 ## Run it
 
-```bash
-cd knight-insurance-24h
+You need Python 3.10 or newer (tested with 3.12 on Windows) and [Ollama](https://ollama.com/download) installed. Run the commands from the
+folder that contains `app.py`. The app is then at http://127.0.0.1:5057.
+
+### Windows
+
+Use PowerShell.
+
+```powershell
 python -m venv .venv
-.venv/bin/pip install -r requirements.txt        # Windows: .venv\Scripts\pip
-ollama pull llama3.2                              # a local model served by Ollama
-.venv/bin/python app.py                           # Windows: .venv\Scripts\python app.py
+.venv\Scripts\pip install -r requirements.txt
+ollama pull llama3.2                 # downloads the model (about 2 GB); Ollama must be running
+.venv\Scripts\python app.py
 # open http://127.0.0.1:5057
 ```
+
+If `ollama` is not recognised, open a new terminal after installing, or use the Ollama app from the Start menu.
+If PowerShell blocks scripts, you do not need to activate the venv: the commands above call its `python` and `pip` directly.
+
+### macOS
+
+Use Terminal (zsh).
+
+```bash
+brew install ollama                  # or install the app from https://ollama.com/download
+ollama serve &                       # skip this if the Ollama menu-bar app is already running
+ollama pull llama3.2                 # downloads the model (about 2 GB)
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python app.py
+# open http://127.0.0.1:5057
+```
+
+On macOS use `python3` to create the venv; after `source .venv/bin/activate` plain `python` and `pip` work.
+If port 5057 is taken, run `PORT=5060 python app.py` and open that port instead.
+
+### Configuration
 
 The app talks to any OpenAI-compatible endpoint. Defaults are for Ollama; override with
 environment variables (see `.env.example`): `KNIGHT_LLM_BASE_URL`
 (`http://localhost:11434/v1`), `KNIGHT_LLM_MODEL` (`llama3.2`), `KNIGHT_LLM_API_KEY`
-(optional, env only, never in source), `PORT` (`5057`), `KNIGHT_DB` (history database,
-default `data/knight.db`; uploads are kept under `data/uploads/`), `KNIGHT_DEV_MODE` (`0` hides
-the Edge-Case Lab, off by default). The header chip shows the
+(optional, env only, never in source), `KNIGHT_LLM_TIMEOUT` (seconds per model call, `240`), `PORT` (`5057`),
+`KNIGHT_DB` (history database, default `data/knight.db`; uploads are kept under `data/uploads/`),
+`KNIGHT_DEV_MODE` (`0` hides the Edge-Case Lab, which is on by default). The header chip shows the
 live model, or "Model unreachable".
+
+Set a variable in PowerShell with `$env:PORT='5060'`, and on macOS with `export PORT=5060`.
 
 ## Tests
 
-```bash
-.venv/bin/python -m pytest tests -q      # 94 tests, no model or network needed
+```powershell
+.venv\Scripts\python -m pytest tests -q      # Windows
 ```
+
+```bash
+python -m pytest tests -q                    # macOS (venv active)
+```
+
+96 tests, no model or network needed.
 
 Covers the three required cases (missing information, source conflict, unequal vehicle
 counts) and the 150 vs 150.1 mile threshold, plus the SUB-A/B/C truth tables, R1 absence
@@ -194,9 +238,9 @@ becomes PASS. The CONFLICT, both alternatives and the evidence stay visible.
 
 ## Model used and results
 
-**`llama3.2` (3B) served locally by Ollama.** Last run, through the real model and the final
-code: SUB-A, SUB-B and SUB-C each 3 times (9 runs), all 9 matched the table above, with
-**0 extraction failures**. Model-down check (endpoint pointed at a dead
+**`llama3.2` (3B) served locally by Ollama.** An earlier live run, SUB-A, SUB-B and SUB-C each
+3 times (9 runs), matched the table above with **0 extraction failures**; the extraction and email
+prompts have been changed since, so re-check a packet by hand after changing the model or prompts. Model-down check (endpoint pointed at a dead
 port): SUB-B was read by label matching and still gave R1 FLAG, R2 PASS, R3/R4 UNKNOWN, R5 FLAG,
 with the "read without AI" banner and a template summary and email.
 
@@ -208,15 +252,14 @@ JSON mode made this worse, so it is not used.
 ## AI tools used
 
 GitHub Copilot (VS Code agent) was used to fix the real-model path, redesign the UI, add the
-logo, add evidence grounding, remove demo mode and write tests. The original base
-implementation came from an earlier AI-assisted draft. All code was run and the tests and
-live runs above were executed. *(Edit this line so it lists exactly the tools you used.)*
+logo, add evidence grounding, remove demo mode, add the review queue and write tests. The original base
+implementation came from an earlier AI-assisted draft. All code was run and the tests were executed.
 
 ## Limitations
 
-- **Single-user, local tool.** Flask's dev server is threaded and each request has its own
-  run id with no shared applicant state, but Ollama serves one model, so simultaneous
-  extractions queue behind each other. Concurrency hardening is out of scope.
+- **Single-user, local tool.** Each request has its own run id with no shared applicant state.
+  Ollama serves one model, so reviews are queued and run one at a time (see the Past reviews list).
+  Concurrency hardening beyond that is out of scope.
 - History is a local SQLite file (`data/`); it has no auth, no multi-user separation and no
   deployment. A fix re-runs the rules, not the model. `data/` and `.venv` should be left
   out of a submission ZIP.
@@ -227,8 +270,18 @@ live runs above were executed. *(Edit this line so it lists exactly the tools yo
   common spellings in the text (November 1, 2026 / 11/1/2026, California, three). An unusual
   spelling is ignored and shows as Missing, which the reviewer can fix.
 - Custom uploads need a text-based PDF (no OCR) and a UTF-8 email.
-- Timeout is 60 s per model call; a slow machine may need a smaller model or a longer timeout.
+- Timeout is 240 s per model call (`KNIGHT_LLM_TIMEOUT`); a CPU-only machine is slow, so use a smaller model or a longer timeout if needed.
+
+## Incomplete / not done
+
+- No OCR: scanned PDFs are not read, and they show up as Missing.
+- No authentication, multi-user separation or deployment; Flask's development server only.
+- The real model is checked by hand, not by the automated tests (which use a fake model). The extraction and email
+  prompts changed late, so re-run the SUB-A/B/C packets by hand after changing the model or prompts.
+- After a fix, the summary and draft are rebuilt from templates, not by the AI; the reviewer can ask the AI to rewrite the draft.
+- A 3B model on CPU is slow (a minute or more per review) and the draft email wording is not always polished.
+- If the app is restarted while reviews are queued or running, they are marked Failed and must be uploaded again.
 
 ## Time spent
 
-*(Fill in your actual time.)*
+About 4 hours.

@@ -80,7 +80,7 @@ Edge-Case Lab; I also drove the live UI with trap packets for the ones marked (U
   is treated as document text. The extraction prompt says documents are data, and the rules are
   plain code, so it cannot change a status. The UI-tested packet showed conflicts and "Needs
   review" despite the injected line. (UI-tested)
-- *Model down, slow or returns junk.* 60 s timeout, then a visible banner and label-matching
+- *Model down, slow or returns junk.* 240 s timeout, then a visible banner and label-matching
   fallback. Rules still run and the summary and email become templates. Tested without a live
   model.
 - *Human corrections.* Fix inputs are validated (`abc`, `-5` and `150 to 200` are rejected).
@@ -95,7 +95,8 @@ Edge-Case Lab; I also drove the live UI with trap packets for the ones marked (U
   run id and upload folder, and there is no shared applicant state, so two packets cannot leak
   into each other."
 - "The real bottleneck is the local model: Ollama handles one request at a time, so parallel
-  uploads would queue, and past the 60 s timeout they would fall back to the visible
+  uploads are queued and processed one at a time (the sidebar shows Queued / Processing), and past the
+  timeout a review would fall back to the visible
   no-AI path instead of crashing. Two simultaneous fixes to the same run would be last write
   wins."
 - "In production I would add a job queue and worker pool, versioned writes per run, and a
