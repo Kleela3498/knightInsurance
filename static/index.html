@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knight Insurance — Submission Review</title>
+<link rel="icon" type="image/png" href="/static/logo.png">
+<style>
+  :root { --navy:#0a2a5e; --navy-dark:#071d42; --navy-soft:#eaf0fa; --line:#d9dfea; --bg:#f4f6fa; --text:#1a2233; --muted:#5b667a;
+          --ok:#1b7a3d; --ok-bg:#e3f4e8; --bad:#b3261e; --bad-bg:#fbe6e4; --warn:#8a5a00; --warn-bg:#fff1d6; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.55 "Segoe UI", system-ui, sans-serif; color:var(--text); background:var(--bg); }
+  header { background:#fff; color:var(--navy); border-bottom:3px solid var(--navy); box-shadow:0 2px 8px rgba(10,42,94,.08);
+           display:flex; align-items:center; gap:18px; padding:8px 24px; position:sticky; top:0; z-index:5; }
+  header img { height:46px; }
+  header h1 { margin:0; font-size:19px; font-weight:600; flex:1; padding-left:18px; border-left:2px solid var(--line); }
+  #chip { font-size:13px; padding:4px 12px; border:1px solid var(--navy); color:var(--navy); background:var(--navy-soft); border-radius:999px; }
+  .layout { display:grid; grid-template-columns:250px minmax(0,1fr); min-height:calc(100vh - 66px); }
+  aside { background:#fff; border-right:1px solid var(--line); padding:16px; }
+  main { padding:24px; min-width:0; }
+  button { font:inherit; cursor:pointer; border-radius:6px; border:1px solid var(--navy); padding:8px 16px; background:#fff; color:var(--navy);
+           transition:background .15s, box-shadow .15s; }
+  button:hover { background:var(--navy-soft); }
+  button.primary { background:var(--navy); color:#fff; font-weight:600; }
+  button.primary:hover { background:var(--navy-dark); }
+  button:disabled { opacity:.5; cursor:wait; }
+  button:focus-visible, .acc-head:focus-visible { outline:3px solid #7aa2e8; outline-offset:2px; }
+  aside .new { width:100%; margin-bottom:16px; padding:11px; }
+  aside h3 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 8px; }
+  .hist { border:1px solid var(--line); border-radius:6px; margin-bottom:8px; position:relative; background:#fff; }
+  .hist::before { content:""; position:absolute; left:0; top:0; bottom:0; width:5px; border-radius:6px 0 0 6px; background:var(--bad); }
+  .hist.ready::before { background:var(--ok); }
+  .hist.working::before { background:var(--navy); }
+  .hist small.state { color:var(--navy); font-weight:600; }
+  .hist.failed small.state { color:var(--bad); }
+  .spin.dark { border-color:var(--navy); border-top-color:transparent; }
+  .hist.on { border-color:var(--navy); background:var(--navy-soft); }
+  .hist-main { display:block; width:100%; text-align:left; border:0; background:transparent; padding:8px 38px 8px 14px; color:inherit; }
+  .hist-main:hover { background:transparent; }
+  .hist b { display:block; font-weight:600; }
+  .hist small { color:var(--muted); display:block; }
+  .iconbtn { position:absolute; top:6px; right:6px; border:0; background:transparent; padding:3px 7px; color:var(--muted); }
+  .iconbtn:hover { color:var(--bad); background:var(--bad-bg); }
+  #search { margin-bottom:12px; }
+  .trashhead { margin-top:18px; font-size:13px; color:var(--muted); cursor:pointer; display:flex; align-items:center; gap:8px; user-select:none; }
+  .trashhead .chev { margin:0 0 0 auto; width:8px; height:8px; border-color:var(--muted); }
+  .trashhead.open .chev { transform:rotate(-135deg); }
+  .trashrow { border:1px dashed var(--line); border-radius:6px; padding:8px 10px; margin-top:8px; font-size:13px; background:#fafbfd; }
+  .trashrow b { display:block; }
+  .trashrow .acts { margin-top:6px; }
+  .trashrow button { padding:2px 9px; font-size:12px; }
+  .danger { border-color:var(--bad); color:var(--bad); }
+  .danger:hover { background:var(--bad-bg); }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  .actions .grow { flex:1; }
+  .actions button { padding:6px 14px; background:#fff; }
+  .actions button:disabled { opacity:.4; cursor:not-allowed; background:#fff; }
+  #renameBox { display:flex; gap:8px; margin-bottom:16px; }
+  #renameBox input { max-width:320px; }
+  .toast { position:fixed; right:24px; bottom:24px; background:var(--navy-dark); color:#fff; padding:12px 16px; border-radius:8px;
+           box-shadow:0 6px 20px rgba(0,0,0,.25); display:flex; gap:14px; align-items:center; z-index:20; animation:fade .2s; }
+  .toast button { background:transparent; color:#fff; border-color:#fff; padding:3px 12px; }
+  .toast button:hover { background:rgba(255,255,255,.15); }
+  .draftbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .draftbar .grow { flex:1; }
+  .stale { background:var(--warn-bg); color:var(--warn); padding:8px 12px; border-radius:6px; margin-bottom:10px; }
+  .dirty { color:var(--warn); font-weight:600; font-size:14px; }
+  .fixbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:var(--navy-soft); border-radius:8px; padding:8px 12px; margin-bottom:12px; }
+  .fixbar b { color:var(--navy); margin-right:4px; }
+  .fixbar button { padding:4px 12px; font-size:13px; }
+  .fixbar button:disabled { opacity:.4; cursor:not-allowed; }
+  .reviser { background:var(--navy-soft); border-radius:8px; padding:12px; margin-top:14px; }
+  .reviser b { color:var(--navy); }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+  .chips button { padding:3px 11px; font-size:13px; border-radius:999px; }
+  .askrow { display:flex; gap:8px; }
+  .askrow input { flex:1; }
+  #askLog { margin-top:6px; font-size:13px; }
+  #printSheet { display:none; }
+  .tplrow { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  #labBtn { margin-left:10px; padding:4px 12px; font-size:13px; }
+  .tplrow select { flex:1; min-width:220px; }
+  @media print {
+    @page { size:A4; margin:14mm; }
+    body { background:#fff; color:#000; font-size:11pt; }
+    .layout, .toast, #chip, #labBtn { display:none !important; }
+    header { position:static; box-shadow:none; background:#fff; padding:0 0 8px; border-bottom:2px solid #000; margin-bottom:14px; }
+    header img { height:40px; } header h1 { color:#000; font-size:16pt; }
+    #printSheet { display:block; }
+    #printSheet h2 { font-size:13pt; margin:16px 0 6px; padding:0; break-after:avoid; color:#000; }
+    #printSheet h1 { font-size:17pt; margin:0 0 2px; }
+    #printSheet p { margin:0 0 6px; line-height:1.4; }
+    #printSheet .meta { color:#444; margin-bottom:10px; }
+    #printSheet table { width:100%; border-collapse:collapse; }
+    #printSheet thead { display:table-header-group; }
+    #printSheet tr { break-inside:avoid; }
+    #printSheet th, #printSheet td { border:1px solid #888; padding:4px 7px; text-align:left; vertical-align:top; font-size:10pt; }
+    #printSheet th { background:#eee; }
+    #printSheet .st { font-weight:700; white-space:nowrap; }
+    #printSheet small { color:#444; display:block; }
+    #printSheet .mail { border:1px solid #888; padding:8px 10px; white-space:pre-wrap; line-height:1.4; }
+    #printSheet .foot { margin-top:10px; color:#444; font-size:9pt; }
+  }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px; margin-bottom:20px; }
+  .card h2 { margin:0 0 12px; font-size:17px; color:var(--navy); display:flex; align-items:center; gap:8px; }
+  .hidden { display:none !important; }
+  .why { color:var(--muted); font-size:14px; }
+  /* upload form */
+  .step { display:flex; gap:12px; margin-bottom:18px; }
+  .num { flex:none; width:28px; height:28px; border-radius:50%; background:var(--navy); color:#fff; font-weight:600; text-align:center; line-height:28px; }
+  .step .body { flex:1; min-width:0; }
+  .step label { display:block; font-weight:600; }
+  .step small { display:block; color:var(--muted); margin-bottom:4px; }
+  input[type=text], textarea { width:100%; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:6px; }
+  input:focus, textarea:focus { outline:2px solid #7aa2e8; border-color:#7aa2e8; }
+  input[type=file] { font:inherit; max-width:100%; }
+  input[type=file]::file-selector-button { font:inherit; background:var(--navy-soft); color:var(--navy); border:1px solid var(--navy);
+           border-radius:6px; padding:6px 14px; margin-right:10px; cursor:pointer; }
+  .error { background:var(--bad-bg); color:var(--bad); padding:10px 12px; border-radius:6px; margin-top:12px; }
+  /* result layout */
+  .result { display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:20px; align-items:start; }
+  .status { border-radius:8px; padding:16px 20px; margin-bottom:16px; color:#fff; display:flex; gap:14px; align-items:center; }
+  .status .ico { font-size:30px; line-height:1; }
+  .status b { font-size:20px; display:block; }
+  .status small { font-size:14px; opacity:.92; }
+  .status.ok { background:var(--ok); } .status.bad { background:var(--bad); }
+  .changes { background:var(--navy-soft); border-left:4px solid var(--navy); padding:10px 14px; margin-bottom:16px; border-radius:6px; }
+  .summary { border-left:5px solid var(--navy); }
+  .summary p { margin:0; font-size:16.5px; line-height:1.65; }
+  .tag { display:inline-block; font-size:12px; font-weight:700; padding:2px 9px; border-radius:999px; white-space:nowrap; }
+  .PASS,.KNOWN { background:var(--ok-bg); color:var(--ok); }
+  .FLAG,.CONFLICT,.INVALID { background:var(--bad-bg); color:var(--bad); }
+  .UNKNOWN,.MISSING,.FALLBACK { background:var(--warn-bg); color:var(--warn); }
+  .FIXED,.AI { background:#dfe8f7; color:var(--navy); }
+  /* checks */
+  .row { display:flex; gap:12px; padding:10px 0; border-top:1px solid var(--line); align-items:flex-start; }
+  .row:first-of-type { border-top:0; }
+  .row .tag { width:92px; flex:none; text-align:center; margin-top:2px; }
+  .row b { display:block; }
+  /* Edge-Case Lab */
+  .labtop { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:14px 0; }
+  .labverdict { border-radius:8px; padding:14px 18px; margin-bottom:6px; font-size:16px; }
+  .labverdict.ok { background:var(--ok-bg); color:var(--ok); } .labverdict.bad { background:var(--bad-bg); color:var(--bad); }
+  .labverdict b { display:block; font-size:19px; }
+  .lab-group { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:22px 0 8px; }
+  details.lab { border:1px solid var(--line); border-radius:8px; margin-bottom:8px; background:#fff; overflow:hidden; }
+  details.lab.fail { border-color:#e6b8b4; }
+  details.lab > summary { list-style:none; cursor:pointer; padding:12px 14px; display:flex; gap:12px; align-items:center; }
+  details.lab > summary::-webkit-details-marker { display:none; }
+  details.lab > summary:hover { background:var(--navy-soft); }
+  details.lab > summary .tag { width:70px; text-align:center; flex:none; }
+  details.lab > summary .t { flex:1; min-width:0; }
+  details.lab > summary .t b { display:block; font-size:15.5px; }
+  details.lab > summary .chev { flex:none; color:var(--navy); transition:transform .15s; }
+  details.lab[open] > summary .chev { transform:rotate(180deg); }
+  .labbody { padding:4px 16px 16px 16px; border-top:1px solid var(--line); }
+  .labbody h4 { margin:14px 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--navy); }
+  .labbody p, .labbody ul { margin:0; }
+  .labbody ul { padding-left:20px; }
+  .labbody table { width:100%; border-collapse:collapse; font-size:14px; margin-top:4px; }
+  .labbody th { text-align:left; font-size:12px; color:var(--muted); font-weight:600; padding:4px 8px; }
+  .labbody td { padding:6px 8px; border-top:1px solid var(--line); vertical-align:top; }
+  .labbody tr.diff td { background:var(--bad-bg); }
+  .labproblem { color:var(--bad); font-weight:600; margin-top:10px; }
+  .labdoc { background:var(--navy-soft); border-left:4px solid var(--navy); border-radius:6px; padding:10px 14px; line-height:1.55; }
+  .labdoc.mail { white-space:pre-wrap; background:#fff; border:1px solid var(--line); border-left:4px solid var(--navy); }
+  .labbody h4 .tag { margin-left:8px; text-transform:none; letter-spacing:0; }
+  /* accordion (fields) */
+  .toolbar { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .toolbar button { padding:4px 12px; font-size:13px; }
+  .acc { border:1px solid var(--line); border-radius:8px; margin-bottom:8px; background:#fff; overflow:hidden; }
+  .acc.attn { border-color:#e6b8b4; }
+  .acc-head { display:grid; grid-template-columns:minmax(120px,170px) minmax(0,1fr) auto 20px; gap:12px; align-items:center;
+              padding:11px 14px; cursor:pointer; user-select:none; }
+  .acc-head:hover { background:#f7f9fc; }
+  .acc-head .lbl { font-weight:600; }
+  .acc-head .val { font-size:16px; overflow-wrap:anywhere; }
+  .acc-head .val small { color:var(--muted); font-size:13px; }
+  .chev { width:10px; height:10px; border-right:2px solid var(--navy); border-bottom:2px solid var(--navy); transform:rotate(45deg); transition:transform .2s; margin:0 auto; }
+  .acc.open .chev { transform:rotate(-135deg); }
+  .acc-body { display:none; padding:4px 14px 14px; border-top:1px solid var(--line); background:#fbfcfe; animation:fade .2s; }
+  .acc.open .acc-body { display:block; }
+  @keyframes fade { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+  .src { background:#fff; border:1px solid var(--line); border-radius:6px; padding:8px 12px; margin-top:8px; }
+  .src.clickable { cursor:pointer; }
+  .src.clickable:hover { border-color:var(--navy); background:#f7f9fc; }
+  .src .see { float:right; font-size:12px; color:var(--navy); }
+  .src .from { font-size:13px; font-weight:600; color:var(--navy); }
+  .src q { display:block; margin-top:2px; quotes:none; }
+  .src q::before { content:"“"; } .src q::after { content:"”"; }
+  .src .note { color:var(--muted); }
+  .src button { padding:3px 10px; font-size:12px; margin-top:6px; }
+  .acts { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .fix { background:var(--navy-soft); border-radius:6px; padding:12px; margin-top:12px; }
+  .fix .err { color:var(--bad); margin-top:6px; }
+  .fixnote { background:var(--navy-soft); border-radius:6px; padding:8px 12px; margin-top:10px; font-size:14px; }
+  textarea { min-height:220px; }
+  /* documents */
+  .docs { position:sticky; top:80px; }
+  .tabs { display:flex; margin-bottom:8px; }
+  .tabs button { border-radius:0; flex:1; }
+  .tabs button:first-child { border-radius:6px 0 0 6px; } .tabs button:last-child { border-radius:0 6px 6px 0; }
+  .tabs button.on { background:var(--navy); color:#fff; }
+  #docBody { position:relative; white-space:pre-wrap; font:13px/1.55 Consolas, monospace; max-height:65vh; overflow:auto;
+             border:1px solid var(--line); border-radius:6px; padding:12px; background:#fff; }
+  #docBody mark { background:#ffe066; padding:1px 2px; border-radius:2px; }
+  .page { color:var(--muted); font-weight:700; margin:8px 0 4px; }
+  .spin { display:inline-block; width:14px; height:14px; border:2px solid #fff; border-top-color:transparent;
+          border-radius:50%; animation:s .8s linear infinite; vertical-align:-2px; margin-right:6px; }
+  @keyframes s { to { transform:rotate(360deg); } }
+  @media (max-width:1150px) { .result { grid-template-columns:1fr; } .docs { position:static; } }
+  @media (max-width:800px) { .layout { grid-template-columns:1fr; } aside { border-right:0; border-bottom:1px solid var(--line); }
+    .acc-head { grid-template-columns:1fr auto 20px; } .acc-head .lbl { grid-column:1 / -1; } }
+</style>
+</head>
+<body>
+<header>
+  <img src="/static/logo.png" alt="Knight Insurance Group">
+  <h1>Submission Review</h1>
+  <span id="chip">checking model…</span>
+  <button id="labBtn" class="hidden" title="Run edge-case checks (model down, bad replies, scanned PDF…)">🧪 Edge-Case Lab</button>
+</header>
+
+<div class="layout">
+  <aside>
+    <button class="primary new" id="newBtn">+ New review</button>
+    <input type="text" id="search" placeholder="🔍 Search past reviews">
+    <h3>Past reviews</h3>
+    <div id="history"></div>
+    <div id="trashHead" class="trashhead hidden"><span id="trashLabel"></span><span class="chev"></span></div>
+    <div id="trash" class="hidden"></div>
+  </aside>
+
+  <main>
+    <!-- Dev mode: Edge-Case Lab -->
+    <section id="labView" class="card hidden">
+      <h2>🧪 Edge-Case Lab</h2>
+      <p class="why" style="margin:0 0 4px"><b>What is this?</b> A safety drill. It takes the sample submissions, deliberately breaks something
+        (the AI goes down, gives nonsense, a PDF is unreadable, a broker tries to trick the AI…) and checks that the app stays safe and still gives the right answer.</p>
+      <p class="why" style="margin:0"><b>How to read it:</b> <span class="tag PASS">✓ Pass</span> means the app handled the problem correctly.
+        Click any row to see what was broken, why it matters, what the app did, and the summary and email the underwriter would still get.
+        <b>No live AI model is called</b>: a scripted stand-in plays the model, so this tests the rule logic and the fallbacks without Ollama, and nothing is saved to your history.</p>
+      <div class="labtop"><button class="primary" id="labRun">▶ Run all checks</button><span id="labSum" class="why"></span></div>
+      <div id="labOut"></div>
+    </section>
+
+    <!-- Screen 1: blank upload form -->
+    <section id="newView" class="card" style="max-width:720px">
+      <h2>Start a new review</h2>
+      <form id="form">
+        <div class="step"><span class="num">1</span><div class="body"><label>Application PDF <span class="why">(required)</span></label>
+          <input type="file" name="application_pdf" accept=".pdf" required></div></div>
+        <div class="step"><span class="num">2</span><div class="body"><label>Broker email</label>
+          <small>Choose the email file, or paste the text below.</small>
+          <input type="file" name="email_file" accept=".txt,.eml">
+          <textarea name="email_text" style="min-height:90px;margin-top:6px" placeholder="…or paste the email here"></textarea></div></div>
+        <div class="step"><span class="num">3</span><div class="body"><label>Vehicle list <span class="why">(CSV)</span></label>
+          <input type="file" name="vehicles_csv" accept=".csv"></div></div>
+        <div class="step"><span class="num">4</span><div class="body"><label>Loss runs or other PDFs <span class="why">(optional)</span></label>
+          <input type="file" name="attachments" accept=".pdf" multiple></div></div>
+        <div class="step"><span class="num">5</span><div class="body"><label>Label <span class="why">(optional)</span></label>
+          <input type="text" name="name" placeholder="e.g. SUB-A"></div></div>
+        <button class="primary" id="goBtn" type="submit" style="padding:11px 22px">Review this submission</button>
+        <div id="formError" class="error hidden"></div>
+      </form>
+    </section>
+
+    <!-- Screen 1b: review waiting in the queue, processing or failed -->
+    <section id="pendingView" class="card hidden" style="max-width:720px">
+      <h2 id="pendTitle"></h2>
+      <div id="pendBody"></div>
+    </section>
+
+    <!-- Screen 2: results (summary first) -->
+    <section id="resultView" class="hidden">
+      <div id="warnBox"></div>
+      <div class="actions">
+        <span class="grow"></span>
+        <button id="renameBtn">✎ Rename</button>
+        <button id="printBtn">🖨 Print</button>
+        <button id="delBtn" class="danger">🗑 Delete</button>
+      </div>
+      <div id="renameBox" class="hidden">
+        <input type="text" id="renameInput" maxlength="80" placeholder="Review name">
+        <button class="primary" id="renameSave">Save name</button><button id="renameCancel">Cancel</button>
+      </div>
+      <div id="status" class="status"></div>
+      <div id="changes" class="changes hidden"></div>
+      <div class="result">
+        <div>
+          <div class="card summary"><h2>Summary <span id="sumTag" class="tag"></span></h2><div id="summary"></div></div>
+
+          <div class="card"><h2>Checks</h2><div id="rules"></div></div>
+
+          <div class="card"><h2>What we found in the documents</h2>
+            <div class="fixbar">
+              <b>Your fixes:</b>
+              <button id="undoBtn" title="Undo the last fix (Ctrl+Z)">↶ Undo</button>
+              <button id="redoBtn" title="Redo (Ctrl+Y)">↷ Redo</button>
+              <button id="resetBtn" title="Remove all your fixes and go back to what the AI found">⟲ Restore original values</button>
+            </div>
+            <div class="toolbar">
+              <span class="why">Click a row to open it. Items that need attention are listed first.</span>
+              <span><button id="openAll">Open all</button> <button id="closeAll">Close all</button></span>
+            </div>
+            <div id="fields"></div></div>
+
+          <div class="card"><h2>Draft email to broker <span id="draftTag" class="tag"></span></h2>
+            <div id="staleNote" class="stale hidden">Your fixes changed the checks after you saved this draft. Click “Use new AI draft” to refresh it.</div>
+            <textarea id="draft"></textarea>
+            <div class="why" style="margin:6px 0 0">Draft only. This app never sends email.</div>
+            <div class="draftbar">
+              <button class="primary" id="saveDraft">Save draft</button>
+              <button id="prevDraft" title="Go back to the version before the last change">↶ Previous version</button>
+              <button id="restoreDraft">Use new AI draft</button>
+              <button id="copyBtn">Copy</button>
+              <span class="grow"></span><span id="draftNote" class="dirty"></span>
+            </div>
+            <div class="reviser">
+              <b>Not quite right? Tell the AI what to change</b>
+              <div class="chips">
+                <button data-ask="Make it shorter">Shorter</button>
+                <button data-ask="Make it more friendly and warm">Friendlier</button>
+                <button data-ask="Make it more formal">More formal</button>
+                <button data-ask="Ask them to reply within 3 business days">Add a deadline</button>
+              </div>
+              <div class="askrow">
+                <input type="text" id="askInput" maxlength="300" placeholder="Or type your own, e.g. Also ask for the vehicle schedule">
+                <button class="primary" id="askBtn">Rewrite</button>
+              </div>
+              <div id="askNote" class="why"></div>
+              <div id="askLog" class="why"></div>
+            </div>
+            <div class="reviser">
+              <b>Or start from a ready-made template</b> <span class="why">(works even when the AI is off)</span>
+              <div class="tplrow">
+                <select id="tplSel">
+                  <option value="standard">Standard request (everything that is open)</option>
+                  <option value="missing">Missing items only</option>
+                  <option value="clarify">Clarifications only (conflicts and mismatches)</option>
+                  <option value="acknowledge">Acknowledgement (nothing requested)</option>
+                </select>
+                <button class="primary" id="tplBtn">Use template</button>
+              </div>
+              <div id="tplNote" class="why"></div>
+            </div></div>
+          <div class="why" id="disclaimer"></div>
+        </div>
+
+        <div class="card docs">
+          <h2>Documents</h2>
+          <div id="docNote" class="why" style="margin-bottom:8px"></div>
+          <div class="tabs"><button id="tabEmail">Email</button><button id="tabApp">Application PDF</button></div>
+          <div id="docBody"></div>
+          <div style="margin-top:8px"><a id="pdfLink" target="_blank" href="#">Open original PDF</a></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="printSheet"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LABELS = {
+  business_name:'Business name', requested_effective_date:'Effective date', garaging_state:'Garaging state',
+  operations_description:'Operations', declared_vehicle_count:'Vehicles (declared)',
+  operating_radius_miles:'Radius (miles)', hazardous_materials:'Hazardous materials',
+  schedule_vehicle_count:'Vehicles (on schedule)', loss_runs_present:'Loss runs attached'
+};
+const HINTS = { requested_effective_date:'Format YYYY-MM-DD', garaging_state:'Two letters, e.g. CA',
+  hazardous_materials:'Yes or No', loss_runs_present:'Yes or No' };
+const STATE_WORD = { KNOWN:'✓ Found', MISSING:'Missing', CONFLICT:'⚠ Conflict', INVALID:'Unreadable' };
+const RULE_WORD = { PASS:'✓ Pass', FLAG:'⚠ Flag', UNKNOWN:'? Unknown' };
+let run = null, tab = 'email';
+let openSet = new Set(), fixSet = new Set(), selected = null;
+// Row labels as they are printed in the application PDF: used to find the right "No" or "80".
+const ANCHORS = { business_name:'Business name', requested_effective_date:'Requested effective date', garaging_state:'Garaging state',
+  operations_description:'Operations description', declared_vehicle_count:'Declared vehicle count',
+  operating_radius_miles:'Operating radius miles', hazardous_materials:'Hazardous materials' };
+
+const fmt = v => v === null || v === undefined ? '—' : v === true ? 'Yes' : v === false ? 'No' : String(v);
+const when = iso => new Date(iso).toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+const needsAttention = f => f.override === null && f.state !== 'KNOWN';
+
+async function api(url, opts) {
+  const r = await fetch(url, opts); const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Something went wrong');
+  return j;
+}
+
+/* ---------- header + history ---------- */
+async function modelChip() {
+  try {
+    const j = await api('/api/llm-status');
+    $('chip').textContent = j.reachable ? `Model: ${j.model}` : 'Model not running';
+  } catch { $('chip').textContent = 'Model status unknown'; }
+}
+let allRuns = [], trashRuns = [], trashOpen = false, pollTimer = null, lastActive = new Map();
+const ACTIVE = new Set(['QUEUED', 'PROCESSING']);
+const isActive = r => ACTIVE.has(r.overall_status);
+const aheadOf = r => allRuns.filter(x => isActive(x) && x.created_at < r.created_at).length;
+async function loadHistory() {
+  clearTimeout(pollTimer);
+  [allRuns, trashRuns] = (await Promise.all([api('/api/runs'), api('/api/runs?deleted=1')])).map(j => j.runs);
+  drawHistory();
+  for (const [id, name] of lastActive) {
+    const r = allRuns.find(x => x.run_id === id);
+    if (r && !isActive(r) && !(run && run.run_id === id))
+      toast(r.overall_status === 'FAILED' ? `Review “${name}” failed.` : `Review “${name}” is ready.`, 'Open', () => openRun(id));
+  }
+  lastActive = new Map(allRuns.filter(isActive).map(r => [r.run_id, r.name]));
+  await syncPending();
+  if (lastActive.size) { clearTimeout(pollTimer); pollTimer = setTimeout(() => loadHistory().catch(() => {}), 2000); }
+}
+async function syncPending() {
+  if (!run || !run.state) return;
+  const id = run.run_id, row = allRuns.find(x => x.run_id === id);
+  if (!row) return showNew();
+  if (row.overall_status === run.state) return drawPending();
+  const fresh = await api('/api/runs/' + id);
+  if (!run || run.run_id !== id) return;  // the user moved on while this loaded
+  run = fresh;
+  run.state ? (showPending(), drawPending()) : showResult();
+}
+function drawPending() {
+  const row = allRuns.find(x => x.run_id === run.run_id) || run;
+  const failed = run.state === 'FAILED', working = run.state === 'PROCESSING', ahead = aheadOf(row);
+  $('pendTitle').textContent = failed ? `${run.name}: could not be completed` : `${run.name}: ${working ? 'processing' : 'waiting in line'}`;
+  $('pendBody').innerHTML = failed
+    ? `<div class="error">${esc(run.error || 'Something went wrong.')}</div>`
+    : `<p><span class="spin dark"></span><b>${working ? 'Reading the documents and running the checks…' : `Queued · ${ahead} review${ahead === 1 ? '' : 's'} ahead`}</b></p>
+       <p class="why">You can open other reviews or start another one. This review appears here automatically when it is done.</p>`;
+}
+function showPending() {
+  ['labView', 'newView', 'resultView'].forEach(v => $(v).classList.add('hidden'));
+  $('pendingView').classList.remove('hidden');
+}
+function drawHistory() {
+  const q = $('search').value.trim().toLowerCase();
+  const runs = allRuns.filter(r => !q || `${r.name} ${r.business || ''}`.toLowerCase().includes(q));
+  const html = runs.length ? runs.map(r => {
+    const ready = r.overall_status === 'READY_FOR_REVIEW', working = isActive(r), failed = r.overall_status === 'FAILED';
+    const state = failed ? 'Failed'
+      : r.overall_status === 'PROCESSING' ? '<span class="spin dark"></span>Processing…'
+      : working ? `Queued · ${aheadOf(r)} ahead` : null;
+    return `<div class="hist ${ready ? 'ready' : ''} ${working ? 'working' : ''} ${failed ? 'failed' : ''} ${run && run.run_id === r.run_id ? 'on' : ''}">
+      <button class="hist-main" data-id="${r.run_id}">
+      <b>${esc(r.name)}</b><small>${esc(r.business || (state ? '' : 'Unnamed business'))}</small>
+      <small ${state ? 'class="state"' : ''}>${when(r.created_at)} · ${state || (ready ? 'Ready' : 'Needs review')}${r.fixes ? ' · ' + r.fixes + ' fix' + (r.fixes > 1 ? 'es' : '') : ''}</small></button>
+      <button class="iconbtn" data-del="${r.run_id}" title="Delete this review" aria-label="Delete ${esc(r.name)}">🗑</button></div>`;
+  }).join('') : `<div class="why">${q ? 'No reviews match your search.' : 'No reviews yet.'}</div>`;
+  if (html === lastHistoryHtml) return drawTrash();  // polling must not rebuild an unchanged list under the cursor
+  lastHistoryHtml = html; $('history').innerHTML = html;
+  document.querySelectorAll('.hist-main').forEach(b => b.onclick = () => openRun(b.dataset.id));
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => deleteRun(b.dataset.del));
+  drawTrash();
+}
+let lastHistoryHtml = '', lastTrashHtml = '';
+function drawTrash() {
+  $('trashHead').classList.toggle('hidden', !trashRuns.length);
+  $('trashHead').classList.toggle('open', trashOpen);
+  $('trashLabel').textContent = `🗑 Recently deleted (${trashRuns.length})`;
+  $('trash').classList.toggle('hidden', !trashRuns.length || !trashOpen);
+  const trashHtml = trashRuns.map(r => `<div class="trashrow"><b>${esc(r.name)}</b>${esc(r.business || '')}
+    <div class="acts"><button data-restore="${r.run_id}">Restore</button>
+    <button class="danger" data-forever="${r.run_id}">Delete forever</button></div></div>`).join('');
+  if (trashHtml === lastTrashHtml) return;
+  lastTrashHtml = trashHtml; $('trash').innerHTML = trashHtml;
+  document.querySelectorAll('[data-restore]').forEach(b => b.onclick = () => restoreRun(b.dataset.restore));
+  document.querySelectorAll('[data-forever]').forEach(b => b.onclick = () => {
+    if (b.dataset.sure) return purgeRun(b.dataset.forever);  // second click confirms
+    b.dataset.sure = '1'; b.textContent = 'Click again to confirm';
+    setTimeout(() => { delete b.dataset.sure; b.textContent = 'Delete forever'; }, 4000);
+  });
+}
+$('search').oninput = drawHistory;
+$('trashHead').onclick = () => { trashOpen = !trashOpen; drawHistory(); };
+
+let toastTimer;
+function toast(msg, label, fn) {
+  clearTimeout(toastTimer); document.querySelector('.toast')?.remove();
+  const t = document.createElement('div'); t.className = 'toast';
+  t.innerHTML = `<span>${esc(msg)}</span>` + (label ? `<button>${esc(label)}</button>` : '');
+  if (label) t.querySelector('button').onclick = () => { t.remove(); fn(); };
+  document.body.appendChild(t); toastTimer = setTimeout(() => t.remove(), 8000);
+}
+async function deleteRun(id) {
+  const r = allRuns.find(x => x.run_id === id);
+  await api('/api/runs/' + id, { method:'DELETE' });
+  if (run && run.run_id === id) showNew();
+  await loadHistory();
+  toast(`Deleted “${r ? r.name : 'review'}”.`, 'Undo', () => restoreRun(id));
+}
+async function restoreRun(id) { await api(`/api/runs/${id}/restore`, { method:'POST' }); await loadHistory(); toast('Review restored.'); }
+async function purgeRun(id) { await api(`/api/runs/${id}?forever=1`, { method:'DELETE' }); await loadHistory(); toast('Deleted forever.'); }
+async function openRun(id) {
+  run = await api('/api/runs/' + id);
+  if (run.state) { showPending(); drawPending(); } else showResult();
+  loadHistory();
+}
+function showNew() {
+  run = null; $('labView').classList.add('hidden'); $('newView').classList.remove('hidden'); $('resultView').classList.add('hidden');
+  $('pendingView').classList.add('hidden');
+  $('form').reset(); $('formError').classList.add('hidden'); loadHistory();
+}
+function showResult() {
+  $('labView').classList.add('hidden'); $('pendingView').classList.add('hidden');
+  $('newView').classList.add('hidden'); $('resultView').classList.remove('hidden');
+  $('changes').classList.add('hidden'); $('renameBox').classList.add('hidden'); tab = 'email';
+  openSet = new Set(Object.values(run.fields).filter(needsAttention).map(f => f.name)); fixSet = new Set(); selected = null;
+  render(); window.scrollTo(0, 0);
+}
+$('newBtn').onclick = showNew;
+
+/* ---------- dev mode: Edge-Case Lab ---------- */
+api('/api/dev').then(j => { if (j.enabled) $('labBtn').classList.remove('hidden'); }).catch(() => {});
+$('labBtn').onclick = () => {
+  run = null; $('newView').classList.add('hidden'); $('resultView').classList.add('hidden'); $('pendingView').classList.add('hidden');
+  $('labView').classList.remove('hidden');
+};
+const STATUS_WORD = { PASS:'Pass', FLAG:'Flag', UNKNOWN:'Unknown' };
+const labRules = rules => `<table><tr><th>Check</th><th>Result</th><th>Expected</th><th>Why</th></tr>` + rules.map(x => {
+  const diff = x.expected && x.expected !== x.status;
+  return `<tr class="${diff ? 'diff' : ''}"><td><b>${esc(x.id)}</b> ${esc(x.name)}</td>
+    <td><span class="tag ${x.status}">${STATUS_WORD[x.status] || x.status}</span></td>
+    <td>${x.expected ? `<span class="tag ${x.expected}">${STATUS_WORD[x.expected] || x.expected}</span>` : '–'}</td>
+    <td class="why">${esc(x.reason)}</td></tr>`;
+}).join('') + '</table>';
+const labCard = r => `
+  <details class="lab ${r.ok ? '' : 'fail'}" ${r.ok ? '' : 'open'}>
+    <summary><span class="tag ${r.ok ? 'PASS' : 'FLAG'}">${r.ok ? '✓ Pass' : '✗ Fail'}</span>
+      <span class="t"><b>${esc(r.title)}</b><span class="why">${esc(r.what)}</span></span><span class="chev">▾</span></summary>
+    <div class="labbody">
+      <h4>Why this matters</h4><p>${esc(r.why)}</p>
+      <h4>What the app should do</h4><p>${esc(r.should)}</p>
+      <h4>What the app actually did</h4><ul>${r.did.map(d => `<li>${esc(d)}</li>`).join('')}</ul>
+      <h4>Check results (${esc(r.packet)})</h4>${labRules(r.rules)}
+      <h4>Summary the underwriter would see <span class="tag ${r.summary_origin === 'llm' ? 'AI' : 'FALLBACK'}">${r.summary_origin === 'llm' ? 'AI-written (simulated)' : 'Template'}</span></h4>
+      <div class="labdoc">${esc(r.summary)}</div>
+      <h4>Draft email to the broker <span class="tag ${r.draft_origin === 'llm' ? 'AI' : 'FALLBACK'}">${r.draft_origin === 'llm' ? 'AI-written (simulated)' : 'Template'}</span></h4>
+      <div class="labdoc mail">${esc(r.draft_email)}</div>
+      ${r.ok ? '' : `<div class="labproblem">✗ ${esc(r.problem)}</div>`}
+    </div>
+  </details>`;
+$('labRun').onclick = async () => {
+  $('labRun').disabled = true; $('labSum').textContent = 'Running… about 5 seconds'; $('labOut').innerHTML = '';
+  try {
+    const { results } = await api('/api/dev/lab', { method:'POST' });
+    const good = results.filter(r => r.ok).length, all = good === results.length;
+    $('labSum').textContent = '';
+    const groups = [...new Set(results.map(r => r.group))];
+    $('labOut').innerHTML = `<div class="labverdict ${all ? 'ok' : 'bad'}">
+        <b>${all ? '✓ The app handled every problem safely' : `✗ ${results.length - good} of ${results.length} checks failed`}</b>
+        ${good} of ${results.length} scenarios passed. ${all ? 'Nothing crashed, nothing was invented, and the check results stayed correct.' : 'Open the red rows below to see what went wrong.'}</div>`
+      + groups.map(g => `<div class="lab-group">${esc(g)}</div>` + results.filter(r => r.group === g).map(labCard).join('')).join('');
+  } catch (x) { $('labSum').textContent = x.message; }
+  $('labRun').disabled = false;
+};
+
+/* ---------- upload ---------- */
+$('form').onsubmit = async e => {
+  e.preventDefault();
+  const btn = $('goBtn'), err = $('formError'); err.classList.add('hidden');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Adding to the queue…';
+  try {
+    run = await api('/api/runs', { method:'POST', body:new FormData($('form')) });
+    $('form').reset(); showPending(); drawPending(); loadHistory();
+  } catch (x) { err.textContent = x.message; err.classList.remove('hidden'); }
+  btn.disabled = false; btn.textContent = 'Review this submission';
+};
+
+/* ---------- render result ---------- */
+function render() {
+  const ready = run.overall_status === 'READY_FOR_REVIEW';
+  const bad = run.rules.filter(r => r.status !== 'PASS').length;
+  $('status').className = 'status ' + (ready ? 'ok' : 'bad');
+  $('status').innerHTML = `<span class="ico">${ready ? '✓' : '⚠'}</span><div><b>${esc(run.name)}: ${ready ? 'Ready for review' : 'Needs review'}</b>
+    <small>${ready ? 'All 5 checks passed.' : bad + ' of 5 checks need your attention.'}</small></div>`;
+  $('warnBox').innerHTML = (run.warnings || []).map(w => `<div class="error" style="margin-bottom:12px">${esc(w)}</div>`).join('');
+
+  const tag = (el, o) => { el.textContent = originWord(o); el.className = 'tag ' + (o === 'llm' ? 'AI' : 'FALLBACK'); };
+  tag($('sumTag'), run.summary_origin); tag($('draftTag'), run.draft_origin);
+  const paras = (run.summary || '').replace(/^\s*Internal Underwriter Summary:?\s*/i, '').split(/\n\s*\n/).filter(p => p.trim());
+  $('summary').innerHTML = paras.map(p => `<p>${esc(p.trim())}</p>`).join('');
+
+  $('rules').innerHTML = run.rules.map(r => `
+    <div class="row"><span class="tag ${r.status}">${RULE_WORD[r.status] || r.status}</span>
+    <div><b>${esc(r.rule_id)} · ${esc(r.name)}</b><span class="why">${esc(r.reason)}</span></div></div>`).join('');
+
+  const fields = Object.values(run.fields).sort((a, b) => needsAttention(b) - needsAttention(a));
+  $('fields').innerHTML = fields.map(fieldRow).join('');
+  document.querySelectorAll('.acc-head').forEach(h => {
+    const toggle = () => { const a = h.parentElement, n = a.dataset.name;
+      a.classList.toggle('open'); h.setAttribute('aria-expanded', a.classList.contains('open'));
+      a.classList.contains('open') ? (openSet.add(n), select(n)) : openSet.delete(n); };
+    h.onclick = toggle; h.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+  });
+  document.querySelectorAll('[data-see]').forEach(b => b.onclick = () => select(b.dataset.see, b.dataset.doc));
+  document.querySelectorAll('[data-fix]').forEach(b => b.onclick = () => {
+    const el = $('fix-' + b.dataset.fix); el.classList.toggle('hidden');
+    el.classList.contains('hidden') ? fixSet.delete(b.dataset.fix) : (fixSet.add(b.dataset.fix), $('in-' + b.dataset.fix).focus());
+  });
+  document.querySelectorAll('[data-save]').forEach(b => b.onclick = () => save(b.dataset.save));
+  document.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => save(b.dataset.field, b.dataset.pick));
+  document.querySelectorAll('[data-undo]').forEach(b => b.onclick = () => save(b.dataset.undo, null, true));
+  document.querySelectorAll('.fix input').forEach(i => i.onkeydown = e => { if (e.key === 'Enter') save(i.dataset.f); });
+
+  drawDraft(); drawActions();
+  $('disclaimer').textContent = run.disclaimer;
+  $('pdfLink').href = `/api/runs/${run.run_id}/pdf`;
+  $('docNote').textContent = '';
+  renderDoc();
+}
+
+const docOf = e => e.source_file === run.sources.email.filename ? 'email'
+                 : e.source_file === run.sources.application.filename ? 'application' : null;
+function srcName(e) {
+  if (docOf(e) === 'email') return '✉ Email';
+  if (docOf(e) === 'application') return '📄 Application PDF · ' + String(e.locator).replace(/^PDF\s*/i, '');
+  return '📎 ' + e.source_file;
+}
+const isDoc = e => docOf(e) !== null;
+
+function fieldRow(f) {
+  const lbl = LABELS[f.name] || f.name;
+  const fixed = f.override !== null, open = openSet.has(f.name), fixOpen = fixSet.has(f.name);
+  let val;
+  if (f.state === 'CONFLICT' && !fixed) {
+    val = f.alternatives.map(a => `<b>${esc(fmt(a.value))}</b> <small>(${a.source === 'email' ? 'email' : 'PDF'})</small>`).join(' <small>vs</small> ');
+  } else if (f.effective_value === null || f.effective_value === undefined) val = '<span class="why">Not found</span>';
+  else val = `<b>${esc(fmt(f.effective_value))}</b>`;
+  const pill = fixed ? '<span class="tag FIXED">✎ Fixed by you</span>' : `<span class="tag ${f.state}">${STATE_WORD[f.state]}</span>`;
+
+  const srcs = f.evidence.map(e => {
+    const doc = isDoc(e) && f.state !== 'MISSING';
+    return `<div class="src ${doc ? 'clickable' : ''}" ${doc ? `data-see="${f.name}" data-doc="${docOf(e)}" title="Click to see this in the document"` : ''}>
+      ${doc ? '<span class="see">See in document ›</span>' : ''}<div class="from">${esc(srcName(e))}</div>
+      ${doc ? `<q>${esc(e.excerpt_or_observation)}</q>` : `<span class="note">${esc(e.excerpt_or_observation)}</span>`}</div>`;
+  }).join('');
+  const note = fixed ? `<div class="fixnote">You changed this value. The AI had: ${f.state === 'CONFLICT' ? 'a conflict' : esc(fmt(f.value))}. The original evidence is kept below.</div>` : '';
+  const picks = f.state === 'CONFLICT' ? f.alternatives.map(a =>
+    `<button data-field="${f.name}" data-pick="${esc(fmt(a.value))}">Use ${esc(fmt(a.value))} (${a.source === 'email' ? 'email' : 'PDF'})</button>`).join('') : '';
+  const undo = fixed ? `<button data-undo="${f.name}">Undo my fix</button>` : '';
+  const initial = fixed ? fmt(f.effective_value) : (f.state === 'CONFLICT' ? '' : (f.value === null ? '' : fmt(f.value)));
+  return `<div class="acc ${open ? 'open' : ''} ${needsAttention(f) ? 'attn' : ''}" data-name="${f.name}">
+    <div class="acc-head" role="button" tabindex="0" aria-expanded="${open}">
+      <span class="lbl">${lbl}</span><span class="val">${val}</span>${pill}<span class="chev"></span></div>
+    <div class="acc-body">${note}
+      <div class="why" style="margin-top:10px">Where this came from:</div>${srcs}
+      <div class="acts">
+        <button class="primary" data-fix="${f.name}">✎ Fix this value</button>${undo}</div>
+      <div class="fix ${fixOpen ? '' : 'hidden'}" id="fix-${f.name}">
+        <div class="why">Type the correct value${HINTS[f.name] ? ' (' + HINTS[f.name] + ')' : ''}. The checks will re-run.</div>
+        <input type="text" id="in-${f.name}" data-f="${f.name}" value="${esc(initial)}" style="margin-top:6px">
+        <div class="acts"><button class="primary" data-save="${f.name}">Save and re-check</button>${picks}</div>
+        <div class="err" id="err-${f.name}"></div>
+      </div></div></div>`;
+}
+$('openAll').onclick = () => document.querySelectorAll('.acc').forEach(a => { a.classList.add('open'); openSet.add(a.dataset.name); });
+$('closeAll').onclick = () => document.querySelectorAll('.acc').forEach(a => { a.classList.remove('open'); openSet.delete(a.dataset.name); });
+
+/* ---------- documents + highlighting ---------- */
+function marksFor(name) {
+  const m = { email: [], application: [] }, f = name && run.fields[name];
+  if (f && f.state !== 'MISSING') f.evidence.forEach(e => {
+    const d = docOf(e); if (d) m[d].push({ text:e.excerpt_or_observation, label:ANCHORS[name] });
+  });
+  return m;
+}
+
+/* Highlight each excerpt once, as a whole word. A bare value like "No" is located next to its row label
+   (e.g. "Hazardous materials No"), so it never lights up "note" or an unrelated "No". */
+function hl(text, items, done) {
+  const rx = s => s.trim().split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
+  const spans = [];
+  items.forEach(it => {
+    if (done.has(it) || !it.text.trim()) return;
+    const val = '(?<!\\w)' + rx(it.text) + '(?!\\w)', tries = [];
+    if (it.label && !it.text.toLowerCase().includes(it.label.toLowerCase())) tries.push(new RegExp(rx(it.label) + '\\s+' + val, 'i'));
+    tries.push(new RegExp(val), new RegExp(val, 'i'));
+    for (const re of tries) {
+      const m = re.exec(text);
+      if (m) { spans.push([m.index, m.index + m[0].length]); done.add(it); break; }
+    }
+  });
+  spans.sort((a, b) => a[0] - b[0]);
+  let out = '', last = 0;
+  for (const [s, e] of spans) {
+    if (s < last) continue;
+    out += esc(text.slice(last, s)) + '<mark>' + esc(text.slice(s, e)) + '</mark>'; last = e;
+  }
+  return out + esc(text.slice(last));
+}
+function renderDoc(scroll) {
+  const s = run.sources, m = marksFor(selected), done = new Set();
+  $('tabEmail').className = tab === 'email' ? 'on' : ''; $('tabApp').className = tab === 'application' ? 'on' : '';
+  $('docBody').innerHTML = tab === 'email'
+    ? (s.email.text.trim() ? hl(s.email.text, m.email, done) : '(no email text was provided)')
+    : s.application.pages.map(p => `<div class="page">— Page ${p.page} —</div>${hl(p.text, m.application, done)}`).join('');
+  const name = selected ? LABELS[selected] : '', where = tab === 'email' ? 'the email' : 'the application PDF';
+  const hit = $('docBody').querySelector('mark');
+  $('docNote').textContent = !selected ? 'Open a field on the left to see where it came from.'
+    : run.fields[selected].state === 'MISSING' ? `“${name}” was not found in the documents, so there is nothing to highlight.`
+    : !m.email.length && !m.application.length ? `“${name}” comes from the other uploaded files, so there is no text to highlight.`
+    : !m[tab].length ? `“${name}” has no text in ${where}.`
+    : !hit ? `Could not pinpoint “${name}” in ${where}.`
+    : `Highlighted in yellow: “${name}” in ${where}. Click the other tab to compare.`;
+  if (scroll && hit) $('docBody').scrollTop = hit.offsetTop - $('docBody').clientHeight / 2;
+}
+$('tabEmail').onclick = () => { tab = 'email'; renderDoc(true); };
+$('tabApp').onclick = () => { tab = 'application'; renderDoc(true); };
+
+// Selecting a field (opening its row, or clicking one of its sources) highlights it in both tabs.
+function select(name, doc) {
+  selected = name; const m = marksFor(name);
+  tab = doc || (m.email.length ? 'email' : m.application.length ? 'application' : tab);
+  renderDoc(true);
+}
+
+/* ---------- fix / feedback loop ---------- */
+const savedDraft = () => run.draft_edited ?? run.draft_email ?? '';
+const originWord = o => o === 'llm' ? 'AI-written' : o === 'template' ? 'Template (updated after your change)' : 'Template (AI was unavailable)';
+function drawDraft() {
+  $('draft').value = savedDraft();
+  const edited = run.draft_edited !== null && run.draft_edited !== undefined;
+  $('draftTag').textContent = edited ? 'Edited' : originWord(run.draft_origin);
+  $('draftTag').className = 'tag ' + (edited ? 'FIXED' : (run.draft_origin === 'llm' ? 'AI' : 'FALLBACK'));
+  $('staleNote').classList.toggle('hidden', !run.draft_stale);
+  $('restoreDraft').classList.toggle('hidden', !edited);
+  const asked = (run.draft_feedback || []).map(f => `“${esc(f.instruction)}”`);
+  $('askLog').innerHTML = asked.length ? 'Your requests so far: ' + asked.join(' · ') : '';
+  draftDirty(); drawPrintSheet();
+}
+function draftDirty() {
+  const dirty = $('draft').value !== savedDraft();
+  $('draftNote').textContent = dirty ? 'Unsaved changes' : '';
+  $('saveDraft').disabled = !dirty;
+  $('prevDraft').disabled = !(run.draft_history || []).length;
+}
+$('draft').oninput = draftDirty;
+window.addEventListener('beforeunload', e => { if (run && !$('resultView').classList.contains('hidden') && $('draft').value !== savedDraft()) e.preventDefault(); });
+/* Print: a plain table layout built from the data (the on-screen cards are hidden when printing). */
+function printEvidence(f) {
+  return f.evidence.map(e => {
+    const d = docOf(e), who = d === 'email' ? 'Email' : d === 'application' ? 'PDF' : e.source_file;
+    return d && f.state !== 'MISSING' ? `<small>${who}: “${esc(e.excerpt_or_observation)}”</small>` : `<small>${esc(e.excerpt_or_observation)}</small>`;
+  }).join('');
+}
+function printValue(f) {
+  if (f.override !== null) return `<b>${esc(fmt(f.effective_value))}</b><small>Fixed by you (the AI had: ${f.state === 'CONFLICT' ? 'a conflict' : esc(fmt(f.value))})</small>`;
+  if (f.state === 'CONFLICT') return f.alternatives.map(a => `${a.source === 'email' ? 'Email' : 'PDF'}: <b>${esc(fmt(a.value))}</b>`).join('<br>');
+  return f.effective_value === null || f.effective_value === undefined ? 'Not found' : `<b>${esc(fmt(f.effective_value))}</b>`;
+}
+function drawPrintSheet() {
+  if (!run) return;
+  const bad = run.rules.filter(r => r.status !== 'PASS').length, ready = run.overall_status === 'READY_FOR_REVIEW';
+  const text = $('draft').value || savedDraft();
+  const paras = (run.summary || '').replace(/^\s*Internal Underwriter Summary:?\s*/i, '').split(/\n\s*\n/).filter(p => p.trim());
+  const fields = Object.values(run.fields).sort((a, b) => needsAttention(b) - needsAttention(a));
+  $('printSheet').innerHTML = `
+    <h1>${esc(run.name)}: ${ready ? 'Ready for review' : 'Needs review'}</h1>
+    <p class="meta">${ready ? 'All 5 checks passed.' : bad + ' of 5 checks need attention.'} · Printed ${new Date().toLocaleString()}</p>
+    <h2>Summary <small style="display:inline">(${esc(originWord(run.summary_origin))})</small></h2>
+    ${paras.map(p => `<p>${esc(p.trim())}</p>`).join('')}
+    <h2>Checks</h2>
+    <table><thead><tr><th>Check</th><th>Result</th><th>Why</th></tr></thead><tbody>
+      ${run.rules.map(r => `<tr><td>${esc(r.rule_id)} · ${esc(r.name)}</td><td class="st">${RULE_WORD[r.status] || r.status}</td><td>${esc(r.reason)}</td></tr>`).join('')}
+    </tbody></table>
+    <h2>What we found in the documents</h2>
+    <table><thead><tr><th>Field</th><th>Value</th><th>Status</th><th>Where it came from</th></tr></thead><tbody>
+      ${fields.map(f => `<tr><td>${LABELS[f.name] || f.name}</td><td>${printValue(f)}</td>
+        <td class="st">${f.override !== null ? 'Fixed by you' : STATE_WORD[f.state]}</td><td>${printEvidence(f)}</td></tr>`).join('')}
+    </tbody></table>
+    <h2>Draft email to broker</h2>
+    <div class="mail">${esc(text)}</div>
+    <p class="foot">${esc(run.disclaimer || '')} Draft only. This app never sends email.</p>`;
+}
+window.addEventListener('beforeprint', drawPrintSheet);
+const postDraft = (path, body) => api(`/api/runs/${run.run_id}/draft${path}`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body || {}) });
+$('saveDraft').onclick = async () => { run = await postDraft('', { text:$('draft').value }); drawDraft(); toast('Draft saved.'); };
+$('restoreDraft').onclick = async () => { run = await postDraft('', { restore:true }); drawDraft(); toast('Back to the AI draft.'); };
+$('prevDraft').onclick = async () => { run = await postDraft('/previous'); drawDraft(); toast('Went back one version.'); };
+
+$('tplBtn').onclick = async () => {
+  if ($('draft').value !== savedDraft() && !confirm('You have unsaved changes in the draft. Replace them with the template?')) return;
+  $('tplNote').textContent = '';
+  try {
+    run = await postDraft('/template', { kind:$('tplSel').value }); drawDraft();
+    toast('Template applied. “Previous version” brings the old email back.');
+  } catch (x) { $('tplNote').innerHTML = `<span style="color:var(--bad)">${esc(x.message)}</span>`; }
+};
+
+// Email feedback loop: the reviewer says what to change and the model rewrites the draft.
+async function askAI(instruction) {
+  instruction = instruction.trim(); $('askNote').textContent = '';
+  if (!instruction) { $('askNote').textContent = 'Type what you want changed, or pick a quick option above.'; return; }
+  busy(true); $('askBtn').innerHTML = '<span class="spin"></span>Rewriting…';
+  try {
+    run = await postDraft('/revise', { instruction, text:$('draft').value });
+    $('askInput').value = ''; drawDraft(); toast('Email rewritten. “Previous version” brings the old one back.');
+  } catch (x) { $('askNote').innerHTML = `<span style="color:var(--bad)">${esc(x.message)}</span>`; }
+  $('askBtn').textContent = 'Rewrite'; busy(false);
+}
+$('askBtn').onclick = () => askAI($('askInput').value);
+$('askInput').onkeydown = e => { if (e.key === 'Enter') askAI($('askInput').value); };
+document.querySelectorAll('[data-ask]').forEach(b => b.onclick = () => askAI(b.dataset.ask));
+
+function drawActions() {
+  const hasFixes = Object.values(run.fields).some(f => f.override !== null);
+  $('undoBtn').disabled = !(run.undo || []).length; $('redoBtn').disabled = !(run.redo || []).length;
+  $('resetBtn').disabled = !hasFixes;
+}
+function busy(on) {
+  document.querySelectorAll('button').forEach(b => b.disabled = on);
+  if (!on) { drawActions(); draftDirty(); }
+}
+
+/* Every change (fix, undo, redo, restore) goes through here: save, re-run the checks, show what changed. */
+async function recheck(path, body, label, focusField) {
+  $('changes').classList.remove('hidden');
+  $('changes').innerHTML = '<span class="spin" style="border-color:var(--navy);border-top-color:transparent"></span>Re-checking…';
+  window.scrollTo({ top:0, behavior:'smooth' }); busy(true);
+  try {
+    const j = await api(`/api/runs/${run.run_id}/${path}`, { method:'POST',
+      headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body || {}) });
+    const changes = j.changes; run = j;
+    if (focusField) { fixSet.delete(focusField); openSet.add(focusField); }
+    render(); loadHistory();
+    $('changes').classList.remove('hidden');
+    $('changes').innerHTML = `<b>${esc(label)}</b> ` + (changes.length
+      ? 'Checks changed: ' + changes.map(c => `${c.rule_id} <span class="tag ${c.before}">${c.before}</span> → <span class="tag ${c.after}">${c.after}</span>`).join(', ')
+      : 'No check results changed.');
+  } catch (x) {
+    $('changes').classList.add('hidden'); render();
+    if (focusField) { fixSet.add(focusField); openSet.add(focusField); render(); $('err-' + focusField).textContent = x.message; }
+    else toast(x.message);
+  }
+  busy(false);
+}
+
+function save(name, value, clear) {
+  const err = $('err-' + name); err.textContent = '';
+  const v = value !== undefined && value !== null ? value : $('in-' + name).value;
+  if (!clear && !String(v).trim()) { err.textContent = 'Please type a value.'; return; }
+  return recheck('override', { field:name, value:v, clear:!!clear }, `${clear ? 'Fix removed' : 'Saved'}: ${LABELS[name]}.`, name);
+}
+const undo = () => !$('undoBtn').disabled && recheck('undo', {}, 'Undid the last change.');
+const redo = () => !$('redoBtn').disabled && recheck('redo', {}, 'Redid the change.');
+$('undoBtn').onclick = undo; $('redoBtn').onclick = redo;
+$('resetBtn').onclick = () => recheck('reset', {}, 'Restored the original AI values.');
+$('printBtn').onclick = () => window.print();
+$('delBtn').onclick = () => deleteRun(run.run_id);
+$('renameBtn').onclick = () => { $('renameBox').classList.remove('hidden'); $('renameInput').value = run.name; $('renameInput').select(); };
+$('renameCancel').onclick = () => $('renameBox').classList.add('hidden');
+$('renameSave').onclick = async () => {
+  try {
+    run = await api(`/api/runs/${run.run_id}/rename`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ name:$('renameInput').value }) });
+    $('renameBox').classList.add('hidden'); render(); loadHistory();
+  } catch (x) { toast(x.message); }
+};
+$('renameInput').onkeydown = e => { if (e.key === 'Enter') $('renameSave').click(); if (e.key === 'Escape') $('renameCancel').click(); };
+document.addEventListener('keydown', e => {
+  if ($('resultView').classList.contains('hidden') || /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+});
+
+$('copyBtn').onclick = async () => { await navigator.clipboard.writeText($('draft').value); $('copyBtn').textContent = 'Copied ✓'; setTimeout(() => $('copyBtn').textContent = 'Copy', 1500); };
+
+modelChip(); showNew();
+</script>
+</body>
+</html>
